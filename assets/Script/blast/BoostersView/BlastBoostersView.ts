@@ -1,9 +1,10 @@
 import { BoosterType } from '../types/BlastTypes';
+import {BaseComponent} from '../BaseComponent'
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
-export default class BlastBoostersView extends cc.Component {
+export class BlastBoostersView extends BaseComponent {
     @property
     manualLayout: boolean = false;
 
@@ -79,25 +80,13 @@ export default class BlastBoostersView extends cc.Component {
         this._updateVisual();
     }
 
-    private _ensureUI(): void {
-        if (this.node.width === 0 || this.node.height === 0) {
-            this.node.width = 960;
-            this.node.height = 120;
-        }
-
-        // Try to find buttons by names if not assigned
+    private _ensureUI(): void {        // Try to find buttons by names if not assigned
         if (!this.btnRow) this.btnRow = this.node.getChildByName('Btn_Bomb') || this.node.getChildByName('Btn_Row');
         if (!this.btnCol) this.btnCol = this.node.getChildByName('Btn_Teleport') || this.node.getChildByName('Btn_Col');
 
         // Fallback: создаём простые кнопки, если в сцене они не заданы.
         if (!this.btnRow) this.btnRow = this._makeBtn('Bomb', cc.v2(-this.node.width / 6, 0));
         if (!this.btnCol) this.btnCol = this._makeBtn('Teleport', cc.v2(this.node.width / 6, 0));
-
-        this.btnRow.width = this.node.width / 3
-        this.btnRow.height = this.node.height * 0.7
-
-        this.btnCol.width = this.node.width / 3
-        this.btnCol.height = this.node.height * 0.7
 
         // Применяем графический фон к кнопкам, если спрайт загружен.
         this._applyButtonBackgrounds();
@@ -107,7 +96,6 @@ export default class BlastBoostersView extends cc.Component {
         // После того как кнопки есть, обновляем / создаём на них счётчики.
         this._updateCounters();
 
-        // Ensure handlers attached once
         this.btnRow.off(cc.Node.EventType.TOUCH_END);
         this.btnCol.off(cc.Node.EventType.TOUCH_END);
 
@@ -131,7 +119,6 @@ export default class BlastBoostersView extends cc.Component {
 
     // Загружает спрайты bg_booster и slot_booster из assets/resources/imgs/*.
     private _loadSprites(done: () => void): void {
-        // Если спрайты уже загружены — ничего не делаем.
         if (this.boosterBgSpriteFrame && this.slotBgSpriteFrame && this.bombIconSpriteFrame && this.teleportIconSpriteFrame) {
             if (done) done();
             return;
@@ -216,10 +203,6 @@ export default class BlastBoostersView extends cc.Component {
             btn.addChild(container, 1); // над фоном кнопки
         }
 
-        // Позиционируем контейнер по центру в нижней части кнопки
-        const h = btn.height || 52;
-        container.setPosition(0, -btn.height / 2 + 52 + 25);
-
         // Фон slot_booster
         if (this.slotBgSpriteFrame) {
             let bgNode = container.getChildByName('Bg');
@@ -231,9 +214,11 @@ export default class BlastBoostersView extends cc.Component {
             sp.spriteFrame = this.slotBgSpriteFrame;
             sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
             sp.type = cc.Sprite.Type.SLICED;
-            bgNode.width = btn.width * 0.55;
-            bgNode.height = 68 + 20;
+            bgNode.width = Math.max(80, btn.width * 0.35);
+            bgNode.height = Math.max(80, btn.height * 0.25);
             bgNode.setPosition(0, 0);
+
+            container.setPosition(0, -btn.height / 2 + (bgNode.height === 80 ? 60 : bgNode.height));
         }
 
         // Текстовый Label поверх фона
@@ -282,7 +267,9 @@ export default class BlastBoostersView extends cc.Component {
 
         const sp = iconNode.getComponent(cc.Sprite) || iconNode.addComponent(cc.Sprite);
         sp.spriteFrame = frame;
-        sp.sizeMode = cc.Sprite.SizeMode.TRIMMED;
+        iconNode.width = btn.width / 2
+        iconNode.height = btn.height / 2
+        sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
         sp.type = cc.Sprite.Type.SIMPLE;
     }
 
@@ -319,7 +306,6 @@ export default class BlastBoostersView extends cc.Component {
     private _setBtnActive(btn: cc.Node, active: boolean): void {
         if (!btn) return;
 
-        // If design provides a child named "Selected", toggle it
         const selectedNode = btn.getChildByName('Selected');
         if (selectedNode) {
             selectedNode.active = active;
@@ -327,7 +313,6 @@ export default class BlastBoostersView extends cc.Component {
             return;
         }
 
-        // If there is a Graphics component, redraw (только если он включён).
         const g = btn.getComponent(cc.Graphics);
         if (g && g.enabled) {
             g.clear();
@@ -340,7 +325,6 @@ export default class BlastBoostersView extends cc.Component {
         }
 
         const lbl = btn.getComponentInChildren(cc.Label);
-        // if (lbl) lbl.node.color = active ? cc.Color.BLACK : new cc.Color(40, 40, 40);
     }
 
     private _makeBtn(text: string, pos: cc.Vec2): cc.Node {
@@ -354,11 +338,11 @@ export default class BlastBoostersView extends cc.Component {
         g.roundRect(-90, -26, 180, 52, 10);
         g.fill();
 
-        btn.width = 180;
-        btn.height = 52;
+        btn.width = Math.max(120, this.setWidth(320));
+        btn.height = Math.max(160, this.setHeight(352));
 
         const lblNode = new cc.Node('Label');
-        // Лейбл по центру кнопки (для fallback-кнопок он тоже станет счётчиком).
+
         lblNode.setPosition(0, 0);
         btn.addChild(lblNode);
 

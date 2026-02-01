@@ -1,12 +1,12 @@
-import BoardModel from './types/BoardModel';
-import BlastBoardView from './BoardView/BlastBoardView';
-import TileModel from './types/TileModel';
+import {BoardModel} from './types/BoardModel';
+import {BlastBoardView} from './BoardView/BlastBoardView';
+import {TileModel} from './types/TileModel';
 import { BlastStep } from './types/BlastTypes';
 
 const { ccclass, property } = cc._decorator;
 
 @ccclass
-export default class BlastBoardComponent extends cc.Component {
+export class BlastBoardComponent extends cc.Component {
     @property
     manualLayout: boolean = false;
 
@@ -113,6 +113,12 @@ export default class BlastBoardComponent extends cc.Component {
         this.view.rebuild();
     }
 
+    // Мировая позиция клетки (row, col) на доске — используется для полёта эффектов к HUD.
+    public getWorldPositionForCell(row: number, col: number): cc.Vec2 | null {
+        if (!this.view) return null;
+        return this.view.getWorldPositionForCell(row, col);
+    }
+
     public playStep(step: BlastStep, done: () => void): void {
         if (!this.view) {
             done();
@@ -139,9 +145,9 @@ export default class BlastBoardComponent extends cc.Component {
         const names = [
             'block_red',
             'block_green',
+            'block_blue',
             'block_yellow',
             'block_purpure',
-            'block_blue',
         ];
 
         const paths = names.map(n => `imgs/${n}`);

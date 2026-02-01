@@ -1,5 +1,5 @@
-import BoardModel from './types/BoardModel';
-import TileModel from './types/TileModel';
+import {BoardModel} from './types/BoardModel';
+import {TileModel} from './types/TileModel';
 import { BlastStep, BoosterType, GameConfig, GridPos, RemovedByColor, RemovedTileInfo } from './types/BlastTypes';
 
 export interface MoveOutcome {
@@ -21,7 +21,7 @@ export interface MoveOutcome {
     removedByColor?: RemovedByColor;
 }
 
-export default class BlastGameLogic {
+export class BlastGameLogic {
     public readonly cfg: GameConfig;
     public readonly board: BoardModel;
 
@@ -41,7 +41,7 @@ export default class BlastGameLogic {
     constructor(cfg: GameConfig) {
         this.cfg = cfg;
         this.board = new BoardModel({ rows: cfg.rows, cols: cfg.cols, colorsCount: cfg.colorsCount });
-        this.movesLeft = cfg.moves;
+        this.movesLeft = 30;
         this.score = 0;
 
         // Настраиваем базовые параметры бустеров. Если значения не переданы в конфиге,
@@ -241,6 +241,7 @@ export default class BlastGameLogic {
             const prev = byColor[t.color] || 0;
             byColor[t.color] = prev + 1;
         }
+        
 
         return { list, byColor };
     }

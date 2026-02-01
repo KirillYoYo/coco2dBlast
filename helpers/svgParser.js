@@ -45,8 +45,8 @@ const INPUT_DIR = './helpers/svg-input';   // ← папка с SVG
 const OUTPUT_DIR = './helpers/png-output'; // ← куда сохранить
 const RESOLUTION = {
     1024: {
-        w: 1024,
-        h: 768
+        w: 380,
+        h: 190
     }
 };           // ← разрешение
 

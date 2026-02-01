@@ -1,7 +1,8 @@
 ﻿const { ccclass, property } = cc._decorator;
+import { BaseComponent } from '../BaseComponent'
 
 @ccclass
-export default class BlastHudView extends cc.Component {
+export class BlastHudView extends BaseComponent {
 
     @property(cc.Node)
     panel: cc.Node = null;
@@ -24,7 +25,6 @@ export default class BlastHudView extends cc.Component {
     @property(cc.Label)
     lblScoreValue: cc.Label = null;
 
-    // Overlay (win/lose)
     @property(cc.Node)
     overlay: cc.Node = null;
 
@@ -77,6 +77,33 @@ export default class BlastHudView extends cc.Component {
         this._applyMovesText();
     }
 
+    // Короткая пульсация счётчика очков. Цвет можно подсветить под доминирующий цвет хода.
+    public playScorePulse(color: cc.Color | null, intensity: number): void {
+        if (!this.lblScoreValue) return;
+
+        const node = this.lblScoreValue.node;
+        const baseScale = node.scale;
+        const maxExtra = 0.18; // максимальное увеличение масштаба при больших комбо
+        const extra = maxExtra * Math.min(1, Math.max(0.2, intensity));
+        const targetScale = baseScale * (1 + extra);
+
+        const originalColor = node.color.clone();
+        const pulseColor = color || originalColor;
+
+        cc.Tween.stopAllByTarget(node);
+
+        node.color = pulseColor;
+        node.scale = baseScale;
+
+        cc.tween(node)
+            .to(0.08, { scale: targetScale })
+            .to(0.12, { scale: baseScale })
+            .call(() => {
+                node.color = originalColor;
+            })
+            .start();
+    }
+
     public showOverlay(message: string): void {
         if (this.overlay) this.overlay.active = true;
         if (this.overlayLabel) this.overlayLabel.string = message;
@@ -99,47 +126,35 @@ export default class BlastHudView extends cc.Component {
             return;
         }
 
-
         const p = this.panel;
-        const minWidth = 580;
-        const maxWidth = 870;
-        const vs = cc.view.getVisibleSize();
-        const screenWidth = vs.width;
-        const targetWidth = Math.max(minWidth, Math.min(maxWidth, screenWidth * 0.8));
-        const panelHeight = this.node.height;
-        p.width = targetWidth;
-        p.height = panelHeight;
 
-        // Use sprite background if provided (e.g. bg_frame_moves), otherwise fall back to Graphics.
         if (this.panelSpriteFrame) {
-            // Либо берём существующий Sprite, либо добавляем новый.
             const sp = p.getComponent(cc.Sprite) || p.addComponent(cc.Sprite);
-            sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            sp.sizeMode = cc.Sprite.SizeMode.RAW;
             sp.type = cc.Sprite.Type.SLICED;
             sp.spriteFrame = this.panelSpriteFrame;
-
-            p.width = targetWidth;
-            p.height = panelHeight;
         }
+
+        p.height = Math.max(50, this.node.height)
+        p.width = Math.max(50, this.node.width);
+        p.setPosition(0, 0)
     }
 
     private _renderMovesBlockLayout(): void {
-        // Positions labels inside the left moves block.
         if (!this.movesPanel) return;
 
-        const pad = 14;
-        const movesH = this.node.height * 0.7;
+        const movesH = this.panel.height * 0.75;
         const movesW = movesH;
 
-        // Size and position of the left "moves" block within the HUD panel.
         this.movesPanel.width = movesW;
         this.movesPanel.height = movesH;
-        this.movesPanel.setPosition(-this.panel.width / 2 + movesW / 1.2, 20);
+        this.movesPanel.anchorX = 0.5
+        this.movesPanel.anchorY = 0.5
+        this.movesPanel.setPosition(-this.panel.width / 2 + movesW / 2 + 30, 5);
 
-        // Apply optional background sprite to the moves panel (bg_moves etc.).
+
         this._applyMovesPanelBackground(this.movesPanel, this.movesPanelSpriteFrame, movesW, movesH);
 
-        // Ensure moves label exists: try to reuse from scene or create a new one under movesPanel.
         if (!this.lblMovesValue) {
             const n = this.movesPanel.getChildByName('LblMovesValue');
             this.lblMovesValue = n ? n.getComponent(cc.Label) : null;
@@ -149,23 +164,18 @@ export default class BlastHudView extends cc.Component {
             this.lblMovesValue.node.name = 'LblMovesValue';
         }
 
-        this.lblMovesValue.node.getComponent(cc.Label).fontSize = 80
-        this.lblMovesValue.node.getComponent(cc.Label).lineHeight = 82
+        this.lblMovesValue.node.getComponent(cc.Label).fontSize = this.setFontSize(80)
+        this.lblMovesValue.node.getComponent(cc.Label).lineHeight = this.setFontSize(82)
 
         this.lblMovesValue.node.setPosition(0, 0);
-        
 
-        // Apply current moves value text.
+
         this._applyMovesText();
     }
 
     private _renderScoreBlockLayout(): void {
         if (!this.panel) return;
 
-        const pad = 14;
-    
-
-        // Если есть отдельная нода под scoresPanel — используем её, иначе создаём.
         let spNode = this.scoresPanel;
         if (!spNode) {
             spNode = this.panel.getChildByName('ScoresPanel');
@@ -176,19 +186,19 @@ export default class BlastHudView extends cc.Component {
             this.scoresPanel = spNode;
         }
 
-        spNode.width = this.panel.width / 1.65;
-        spNode.height = this.panel.height * 0.68;
-        spNode.setPosition(this.panel.width / 2 - spNode.width / 1.6, 15);
+        spNode.width = this.panel.width * 0.6;
+        spNode.height = Math.max(10, this.panel.height * 0.7);
+        spNode.anchorX = 0.5
+        spNode.anchorY = 0.5
+        spNode.setPosition(spNode.width / 4, 5);
 
-        // Фон для scoresPanel, если задан spriteFrame.
         if (this.scoresSpriteFrame) {
             const sp = spNode.getComponent(cc.Sprite) || spNode.addComponent(cc.Sprite);
             sp.sizeMode = cc.Sprite.SizeMode.CUSTOM;
-            sp.type = cc.Sprite.Type.SLICED;
+            sp.type = cc.Sprite.Type.SIMPLE;
             sp.spriteFrame = this.scoresSpriteFrame;
         }
 
-        // Обеспечиваем наличие лейблов: пробуем найти существующие, иначе создаём под scoresPanel.
         if (!this.lblScoreTitle) {
             let n = spNode.getChildByName('LblScoreTitle');
             if (!n) {
@@ -197,7 +207,7 @@ export default class BlastHudView extends cc.Component {
             this.lblScoreTitle = n ? n.getComponent(cc.Label) : null;
         }
         if (!this.lblScoreTitle) {
-            this.lblScoreTitle = this._makeLabel(spNode, 'Очки:', cc.v2(0, spNode.height / 2 - 24), 28);
+            this.lblScoreTitle = this._makeLabel(spNode, 'Очки:', cc.v2(0, spNode.height / 2), this.setFontSize(28));
             this.lblScoreTitle.node.name = 'LblScoreTitle';
         }
 
@@ -209,34 +219,148 @@ export default class BlastHudView extends cc.Component {
             this.lblScoreValue = n ? n.getComponent(cc.Label) : null;
         }
         if (!this.lblScoreValue) {
-            this.lblScoreValue = this._makeLabel(spNode, '0/0', cc.v2(0, 0), 24);
+            this.lblScoreValue = this._makeLabel(spNode, '0/0', cc.v2(0, 0), this.setFontSize(24));
             this.lblScoreValue.node.name = 'LblScoreValue';
         }
 
-        // Лейблы должны быть дочерними scoresPanel и позиционироваться относительно неё.
         this.lblScoreTitle.node.parent = spNode;
         this.lblScoreTitle.node.setPosition(0, spNode.height / 4);
-        this.lblScoreTitle.node.height = 52
-        this.lblScoreTitle.node.getComponent(cc.Label).fontSize = 50
-        this.lblScoreTitle.node.getComponent(cc.Label).lineHeight = 52
+        // this.lblScoreTitle.node.height = 52
+        this.lblScoreTitle.node.getComponent(cc.Label).fontSize = this.setFontSize(50)
+        this.lblScoreTitle.node.getComponent(cc.Label).lineHeight = this.setFontSize(52)
 
         this.lblScoreValue.node.parent = spNode;
-        this.lblScoreValue.node.getComponent(cc.Label).fontSize = 70
-        this.lblScoreValue.node.getComponent(cc.Label).lineHeight = 72
-        this.lblScoreValue.node.setPosition(0, -24);
+        this.lblScoreValue.node.getComponent(cc.Label).fontSize = this.setFontSize(70)
+        this.lblScoreValue.node.getComponent(cc.Label).lineHeight = this.setFontSize(72)
+        this.lblScoreValue.node.setPosition(0, spNode.height / 4 -this.setFontSize(70));
 
-        // Обновляем текст согласно текущему состоянию счёта.
         this._applyScoreText();
     }
 
     private _layoutOverlay(): void {
-        // Overlay should cover the whole screen (HudRoot is usually full-screen).
         if (!this.overlay) return;
+
 
         const vs = cc.view.getVisibleSize();
         this.overlay.setPosition(0, 0);
         this.overlay.width = vs.width;
         this.overlay.height = vs.height;
+        this.overlay.zIndex = 20;
+
+
+        let background = this.overlay.getChildByName('overlay_background');
+        if (!background) {
+            background = new cc.Node('overlay_background');
+
+            background = new cc.Node('overlay_background');
+            const graphics = background.addComponent(cc.Graphics);
+            graphics.fillColor = cc.color(0, 0, 0, 177);
+            graphics.rect(-10000, -10000, 20000, 20000);
+            graphics.fill();
+
+            this.overlay.addChild(background);
+        }
+
+        background.width = vs.width;
+        background.height = vs.height;
+        background.setPosition(0, 0);
+
+        let labelNode = this.overlay.getChildByName('overlayLabel');
+        if (!labelNode) {
+            labelNode = new cc.Node('overlayLabel');
+            const label = labelNode.addComponent(cc.Label);
+            this.overlayLabel = label
+
+            label.fontSize = this.setFontSize(48);
+            label.lineHeight = this.setFontSize(48);
+            label.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            label.verticalAlign = cc.Label.VerticalAlign.CENTER;
+            label.overflow = cc.Label.Overflow.SHRINK;
+
+            labelNode.color = cc.Color.WHITE;
+
+            this.overlay.addChild(labelNode);
+        }
+
+        labelNode.width = this.panel.width;
+        labelNode.height = 500;
+        labelNode.setPosition(0, 0);
+
+
+        const label = labelNode.getComponent(cc.Label);
+        labelNode.zIndex = 999999
+        if (label) {
+            label.fontSize = this.setFontSize(48);
+            label.lineHeight = label.fontSize + 8;
+        }
+
+        let buttonNode = this.overlay.getChildByName('restartButton');
+        if (!buttonNode) {
+            buttonNode = new cc.Node('restartButton');
+
+            buttonNode.setContentSize(160, 80);
+
+            const graphics = buttonNode.addComponent(cc.Graphics);
+
+            const redrawGraphics = () => {
+                graphics.clear();
+                const width = buttonNode.width;
+                const height = buttonNode.height;
+
+                graphics.roundRect(-width / 2, -height / 2, width, height, 12);
+                graphics.fillColor = cc.color(80, 80, 80);
+                graphics.fill();
+                graphics.strokeColor = cc.Color.WHITE;
+                graphics.lineWidth = 2;
+                graphics.stroke();
+            };
+
+            const button = buttonNode.addComponent(cc.Button);
+
+            const btnLabel = buttonNode.addComponent(cc.Label);
+            btnLabel.string = 'ПЕРЕЗАПУСТИТЬ';
+            btnLabel.fontSize = this.setFontSize(78);
+            btnLabel.lineHeight = this.setFontSize(84);
+            btnLabel.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
+            btnLabel.verticalAlign = cc.Label.VerticalAlign.CENTER;
+            btnLabel.node.color = cc.Color.WHITE;
+            buttonNode.on('click', this.onRestart, this);
+
+            this.overlay.addChild(buttonNode);
+
+            this.scheduleOnce(() => {
+                if (graphics && graphics.isValid) {
+                    redrawGraphics();
+                }
+            }, 0);
+
+            this.scheduleOnce(() => {
+                if (graphics && graphics.isValid) {
+                    redrawGraphics();
+                }
+            }, 0.1);
+        }
+
+        buttonNode.setPosition(0, -150);
+        buttonNode.zIndex = 100;
+        if (!this.overlay.active) {
+            this.overlay.active = true;
+        }
+        if (this.overlay.opacity === 0) {
+            this.overlay.opacity = 255;
+        }
+
+
+        const button = buttonNode.getComponent(cc.Button);
+        button.transition = cc.Button.Transition.COLOR;
+        button.normalColor = cc.color(255, 255, 255, 255);
+        button.pressedColor = cc.color(200, 200, 200, 255);
+        button.hoverColor = cc.color(240, 240, 240, 255);
+    }
+
+    public getScoreWorldPosition(): cc.Vec2 | null {
+        if (!this.lblScoreValue) return null;
+        return this.lblScoreValue.node.convertToWorldSpaceAR(cc.v2(0, 0));
     }
 
     private _applyMovesText(): void {
@@ -254,7 +378,6 @@ export default class BlastHudView extends cc.Component {
             return;
         }
 
-        const gap = 24
         if (width > 0) panel.width = width;
         if (height > 0) panel.height = height;
 
@@ -271,8 +394,8 @@ export default class BlastHudView extends cc.Component {
 
         const l = n.addComponent(cc.Label);
         l.string = text;
-        l.fontSize = fontSize;
-        l.lineHeight = fontSize + 4;
+        l.fontSize = this.setFontSize(fontSize);
+        l.lineHeight = this.setFontSize(fontSize) + 4;
         l.horizontalAlign = cc.Label.HorizontalAlign.CENTER;
         l.verticalAlign = cc.Label.VerticalAlign.CENTER;
 

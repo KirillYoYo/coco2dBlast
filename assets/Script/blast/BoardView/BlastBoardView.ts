@@ -1,8 +1,8 @@
-import BoardModel from '../types/BoardModel';
-import TileModel from '../types/TileModel';
+import {BoardModel} from '../types/BoardModel';
+import {TileModel} from '../types/TileModel';
 import { BlastStep, GridPos } from '../types/BlastTypes';
 
-export default class BlastBoardView {
+export class BlastBoardView {
     private readonly parent: cc.Node;
     private readonly board: BoardModel;
 
@@ -152,6 +152,15 @@ export default class BlastBoardView {
         );
     }
 
+    // Возвращает мировую позицию центра клетки (r, c).
+    public getWorldPositionForCell(r: number, c: number): cc.Vec2 | null {
+        if (r < 0 || r >= this.board.rows || c < 0 || c >= this.board.cols) {
+            return null;
+        }
+        const localPos = this._cellToPos(r, c);
+        return this.parent.convertToWorldSpaceAR(localPos);
+    }
+
     private _findTileById(id: number): TileModel | null {
         // Since BoardModel doesn't keep an id->tile map, we scan (small board: OK)
         for (let r = 0; r < this.board.rows; r++) {
@@ -171,6 +180,7 @@ export default class BlastBoardView {
 
         // Visuals: сначала выбираем нужный спрайт, если он есть.
         let spriteFrame: cc.SpriteFrame | null = null;
+
         if (this.tileSpriteFrame) {
             // Один общий спрайт для всех тайлов (старое поведение / резерв).
             spriteFrame = this.tileSpriteFrame;

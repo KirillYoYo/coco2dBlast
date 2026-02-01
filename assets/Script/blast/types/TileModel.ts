@@ -1,4 +1,4 @@
-export default class TileModel {
+export class TileModel {
     public readonly id: number;
     public color: number;
     public row: number;

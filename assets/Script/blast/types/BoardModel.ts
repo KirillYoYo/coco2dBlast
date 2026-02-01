@@ -1,7 +1,7 @@
-import TileModel from './TileModel';
+import {TileModel} from './TileModel';
 import { BlastStep, BoardConfig, GridPos } from './BlastTypes';
 
-export default class BoardModel {
+export class BoardModel {
     public readonly rows: number;
     public readonly cols: number;
     public readonly colorsCount: number;
